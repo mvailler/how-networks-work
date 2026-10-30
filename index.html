@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Networks Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,600;0,800;1,700;1,800&display=swap" rel="stylesheet">
+<style>
+/* Single light theme on purpose: mirrors the white "Networking Fundamentals" deck.
+   Layout: module rail on the left, one stage (diagram + caption) per step, Back/Next below. */
+:root{
+  --ink:#24292e; --muted:#6a7178; --line:#d6dade; --panel:#f4f6f7; --bg:#ffffff;
+  --blue:#00b0f0; --blue-ink:#0079a8; --green:#00b050; --green-ink:#00803a;
+  --yellow:#ffc000; --red:#e0352b;
+  --display:"Figtree","Avenir Next","Avenir","Segoe UI",system-ui,sans-serif;
+  --body:"Figtree","Avenir Next","Avenir","Segoe UI",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
+.app{display:grid;grid-template-columns:270px 1fr;min-height:100%}
+.rail{border-right:1px solid var(--line);padding:24px 16px;background:var(--panel)}
+.brand{font-family:var(--display);font-weight:800;font-size:22px;line-height:1.15;margin:0 8px 4px}
+.brand span{color:var(--muted);font-weight:600}
+.tag{color:var(--muted);font-size:14px;margin:0 8px 20px}
+.mods{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.mods button{all:unset;cursor:pointer;display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;width:100%;padding:8px;border-radius:8px;font-size:15px;color:var(--ink);box-sizing:border-box}
+.mods button:hover{background:#e8ecee}
+.mods button:focus-visible,.btn:focus-visible,.bit:focus-visible,input:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.mods .n{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:13px;background:#fff;border:1.5px solid var(--line);color:var(--muted)}
+.mods button[aria-current="true"]{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);font-weight:700}
+.mods button[aria-current="true"] .n{background:var(--blue);border-color:var(--blue);color:#fff}
+.mods button.done .n{background:var(--green);border-color:var(--green);color:#fff}
+main{padding:28px 40px 32px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:800;font-size:34px;margin:0;line-height:1.1;text-wrap:balance}
+h1 .soft{color:var(--muted)}
+.count{color:var(--muted);font-size:15px;font-variant-numeric:tabular-nums}
+.stage{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff;min-height:330px;display:flex;align-items:center;justify-content:center;overflow-x:auto}
+.stage svg{width:100%;max-width:860px;height:auto;display:block}
+.cap{max-width:72ch}
+.cap h2{font-family:var(--display);font-size:24px;margin:0 0 6px;line-height:1.2;text-wrap:balance}
+.cap p{margin:0 0 8px}
+.cap em{font-style:italic;font-weight:800}
+.cap .aside{color:var(--muted);font-size:15px}
+.nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.btn{all:unset;cursor:pointer;padding:10px 20px;border-radius:999px;font-weight:700;font-size:16px;border:1.5px solid var(--ink)}
+.btn.primary{background:var(--ink);color:#fff}
+.btn[disabled]{opacity:.35;cursor:default}
+.dots{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.dots i{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--blue)}
+.dots i.seen{background:#9fdcf3}
+.hint{color:var(--muted);font-size:13px}
+/* html scenes */
+.hero{text-align:center}
+.hero .big{font-family:var(--display);font-weight:800;font-size:clamp(40px,7vw,76px);line-height:1.05;color:#3b3f44;letter-spacing:.5px}
+.hero .rule{height:1px;background:var(--line);margin:14px auto 16px;max-width:640px}
+.hero .sub{font-weight:800;font-size:clamp(20px,3vw,30px)}
+.hero .lines{color:var(--muted);font-weight:600;font-size:18px;margin-top:6px}
+.b{color:var(--blue)} .g{color:var(--green-ink)} .k{color:var(--ink)}
+table.t{border-collapse:collapse;font-size:16px;margin:0 auto;font-variant-numeric:tabular-nums}
+table.t th{background:#111;color:#fff;padding:8px 16px;font-weight:800}
+table.t td{border:1px solid #222;padding:7px 16px;text-align:center}
+table.t td:first-child{font-weight:800}
+.tcp{color:var(--green-ink);font-weight:800}.udp{color:var(--blue-ink);font-weight:800}
+.wid{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
+.bits{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.bitc{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.bit{all:unset;cursor:pointer;width:54px;height:64px;border-radius:10px;border:2px solid var(--ink);display:grid;place-items:center;font-size:30px;font-weight:800;background:#fff;box-sizing:border-box}
+.bit[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.readout{display:flex;gap:28px;flex-wrap:wrap;justify-content:center;font-size:18px}
+.readout b{font-size:30px;display:block;font-family:var(--display);font-variant-numeric:tabular-nums}
+.calc{display:grid;gap:12px;width:100%;max-width:720px}
+.calc .row{display:flex;gap:16px;flex-wrap:wrap;align-items:end}
+.calc label{font-size:14px;color:var(--muted);display:flex;flex-direction:column;gap:4px;font-weight:600}
+.calc input[type=text]{font:inherit;font-size:20px;font-weight:800;padding:6px 10px;border:2px solid var(--ink);border-radius:8px;width:190px}
+.calc input[type=range]{width:220px;accent-color:var(--blue)}
+.bin{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;overflow-x:auto;white-space:nowrap;padding:10px;background:var(--panel);border-radius:8px}
+.bin .n{color:var(--blue-ink);font-weight:700}.bin .h{color:var(--green-ink);font-weight:700}
+.res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.res div{background:var(--panel);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted)}
+.res b{display:block;color:var(--ink);font-size:18px;font-variant-numeric:tabular-nums}
+.err{color:var(--red);font-weight:700;min-height:1.4em;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;width:100%;max-width:820px}
+.card{border:1.5px solid var(--line);border-radius:12px;padding:14px}
+.card .lbl{font-size:13px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.card .v{font-family:var(--display);font-weight:800;font-size:22px}
+.card p{margin:6px 0 0;font-size:15px;color:var(--muted)}
+code.term{display:block;background:#1e2226;color:#e8eaec;border-radius:8px;padding:12px 14px;font-size:14px;white-space:pre;overflow-x:auto;text-align:left;max-width:100%}
+.quiz{width:100%;max-width:780px;display:flex;flex-direction:column;gap:12px;align-self:flex-start}
+.score{font-weight:800;color:var(--blue-ink);font-variant-numeric:tabular-nums}
+.q{border:1.5px solid var(--line);border-radius:12px;padding:14px 16px}
+.qq{font-weight:800;margin-bottom:8px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{all:unset;cursor:pointer;padding:8px 14px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-size:15px;font-weight:600;box-sizing:border-box}
+.opt:hover:not([disabled]){border-color:var(--ink)}
+.opt:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.opt[disabled]{cursor:default;color:var(--muted)}
+.opt.ok{background:#e3f7ea;border-color:var(--green);color:var(--green-ink)}
+.opt.no{background:#fde8e6;border-color:var(--red);color:var(--red)}
+.opt.cur{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fb{margin-top:8px;font-size:15px}
+.red{color:var(--red)}
+.q.sort{display:grid;grid-template-columns:minmax(160px,1fr) auto;align-items:center;gap:6px 14px}
+.q.sort .qq{margin:0;font-variant-numeric:tabular-nums}
+.q.sort .fb{grid-column:1/-1;margin:0}
+.hosts{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin-bottom:10px}
+.frame{font-size:18px;margin-bottom:12px;padding:10px 12px;background:#fff8e0;border-radius:8px}
+table.t.mt{margin:0}
+table.t tr.new td{background:#fff3cc}
+.hdr{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.hf{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);font-weight:700;border:1.5px solid #2a7fb0;border-radius:8px;padding:8px}
+.hf select{font:inherit;font-size:15px;font-weight:700;color:var(--ink);padding:4px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.hf select:focus-visible{outline:3px solid var(--blue)}
+.hf b{font-size:15px;color:var(--ink)}
+.hf.okf{border-color:var(--green);background:#e3f7ea}.hf.nof{border-color:var(--red);background:#fde8e6}
+.hf.fixed{border-style:dashed;border-color:var(--line)}
+.chal{font-size:16px;text-align:center}
+.chal .btn{padding:6px 14px;font-size:14px;margin-left:8px}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--line);padding:14px 16px}
+  .tag{display:none}
+  .mods{flex-direction:row;overflow-x:auto;gap:4px}
+  .mods button{grid-template-columns:26px;padding:6px}
+  .mods .lab{display:none}
+  main{padding:18px 16px}
+  h1{font-size:26px}
+  .dots{margin-left:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Modules">
+    <div class="brand">How Networks <span>Work</span></div>
+    <p class="tag">What happens when you open Instagram, one click at a time.</p>
+    <ul class="mods" id="mods"></ul>
+  </nav>
+  <main>
+    <div class="top">
+      <h1 id="title"></h1>
+      <div class="count" id="count" aria-live="polite"></div>
+    </div>
+    <section class="stage" id="stage" aria-live="polite"></section>
+    <div class="cap" id="cap"></div>
+    <div class="nav">
+      <button class="btn" id="prev" type="button">Back</button>
+      <button class="btn primary" id="next" type="button">Next</button>
+      <span class="hint">Tip: use the ← → keys to present</span>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </div>
+  </main>
+</div>
+<script>
+const RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const C = {ink:'#24292e',muted:'#6a7178',line:'#c7ccd1',blue:'#00b0f0',green:'#00b050',yellow:'#ffc000',red:'#e0352b',panel:'#f4f6f7',orange:'#ff8a00',gink:'#00803a',bink:'#0079a8'};
+
+/* ---------- SVG helpers ---------- */
+const svg = (inner, w=860, h=360, label='diagram') =>
+  `<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="${label}" font-family="Figtree, Avenir Next, Segoe UI, sans-serif">
+   <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${C.muted}"/></marker>
+    <marker id="ahd" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#4a4f55"/></marker>
+    <marker id="ahw" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#fff"/></marker>
+   </defs>${inner}</svg>`;
+const T = (x,y,s,o={}) => `<text x="${x}" y="${y}" font-size="${o.size||15}" font-weight="${o.w||700}" fill="${o.fill||C.ink}" text-anchor="${o.a||'middle'}" ${o.italic?'font-style="italic"':''}>${s}</text>`;
+const L = (x1,y1,x2,y2,o={}) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o.c||C.line}" stroke-width="${o.sw||2.5}" ${o.dash?'stroke-dasharray="6 6"':''} ${o.arrow?'marker-end="url(#ah)"':''}/>`;
+function laptop(x,y,w,fill,lines=[],o={}){
+  const h=Math.round(w*.62), tc = o.tc || (fill==='#fff'?C.ink:'#fff');
+  let s=`<g opacity="${o.dim?0.3:1}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${fill}" stroke="#2b2f33" stroke-width="5"/>
+  <path d="M${x-14},${y+h+3} h${w+28} l-9,11 h${-(w+10)} z" fill="#c9ced3"/>`;
+  const fs=o.fs||Math.max(12,Math.min(16,w/9)), y0=y+h/2-(lines.length-1)*fs*0.62+fs*0.35;
+  lines.forEach((ln,i)=>{s+=T(x+w/2,y0+i*fs*1.25,ln,{size:fs,w:i===0?800:600,fill:tc})});
+  return s+'</g>';
+}
+function sw(cx,cy,s=70,o={}){
+  const x=cx-s/2,y=cy-s/2,a=s*.32,g=s*.04;
+  const R=(yy)=>`<line x1="${cx-g}" y1="${yy}" x2="${cx+a}" y2="${yy}" stroke="#4a4f55" stroke-width="5" marker-end="url(#ahd)"/>`;
+  const Lf=(yy)=>`<line x1="${cx+g}" y1="${yy}" x2="${cx-a}" y2="${yy}" stroke="#4a4f55" stroke-width="5" marker-end="url(#ahd)"/>`;
+  return `<g opacity="${o.dim?0.3:1}"><rect x="${x}" y="${y}" width="${s}" height="${s}" rx="12" fill="#fff" stroke="${o.hl?C.blue:'#2b2f33'}" stroke-width="${o.hl?4:2.5}"/>
+  ${R(cy-s*.24)}${Lf(cy-s*.08)}${R(cy+s*.08)}${Lf(cy+s*.24)}
+  ${o.label?T(cx,cy+s/2+20,o.label,{size:14}):''}</g>`;
+}
+function rt(cx,cy,r=34,o={}){
+  const d=r*.62;
+  return `<g opacity="${o.dim?0.3:1}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${C.green}" stroke="${o.hl?C.ink:'none'}" stroke-width="4"/>
+  <line x1="${cx}" y1="${cy-6}" x2="${cx}" y2="${cy-d}" stroke="#fff" stroke-width="5" marker-end="url(#ahw)"/>
+  <line x1="${cx}" y1="${cy+6}" x2="${cx}" y2="${cy+d}" stroke="#fff" stroke-width="5" marker-end="url(#ahw)"/>
+  <line x1="${cx-d}" y1="${cy}" x2="${cx-8}" y2="${cy}" stroke="#fff" stroke-width="5" marker-end="url(#ahw)"/>
+  <line x1="${cx+d}" y1="${cy}" x2="${cx+8}" y2="${cy}" stroke="#fff" stroke-width="5" marker-end="url(#ahw)"/>
+  ${o.label?T(cx,cy+r+20,o.label,{size:14}):''}</g>`;
+}
+function server(x,y,w,h,fill,lines=[],o={}){
+  let s=`<g opacity="${o.dim?0.3:1}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${fill}" stroke="${o.hl?C.ink:'none'}" stroke-width="3"/>`;
+  for(let i=0;i<3;i++) s+=`<rect x="${x+12}" y="${y+12+i*12}" width="${w-24}" height="7" rx="3.5" fill="#fff"/>`;
+  lines.forEach((ln,i)=>{s+=T(x+w/2,y+h-14-(lines.length-1-i)*18,ln,{size:14,w:i===0?800:600,fill:'#fff'})});
+  return s+'</g>';
+}
+function dot(x1,y1,x2,y2,o={}){
+  const c=o.c||C.yellow, dur=o.dur||1.6, n=o.n||1;
+  if(RM) return `<circle cx="${(x1+x2)/2}" cy="${(y1+y2)/2}" r="9" fill="${c}" stroke="#b38600" stroke-width="1.5"/>`;
+  let s='';
+  for(let i=0;i<n;i++) s+=`<circle r="9" fill="${c}" stroke="${c===C.yellow?'#b38600':'#fff'}" stroke-width="1.5" opacity="0"><animateMotion dur="${dur}s" begin="${(o.delay||0)+i*dur/n}s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}"/><animate attributeName="opacity" dur="${dur}s" begin="${(o.delay||0)+i*dur/n}s" repeatCount="indefinite" values="0;1;1;0" keyTimes="0;.1;.85;1"/></circle>`;
+  return s;
+}
+function bubble(x,y,w,lines,o={}){
+  const h=16+lines.length*21, c=o.c||C.ink;
+  let s=`<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="#fff" stroke="${c}" stroke-width="2.5"/>`;
+  if(o.tail) s+=`<path d="M${o.tail[0]-8},${y+(o.tail[1]>y?h:0)} L${o.tail[0]},${o.tail[1]} L${o.tail[0]+8},${y+(o.tail[1]>y?h:0)}" fill="#fff" stroke="${c}" stroke-width="2.5"/><rect x="${o.tail[0]-9}" y="${(o.tail[1]>y?y+h-3:y+1)}" width="18" height="4" fill="#fff"/>`;
+  lines.forEach((ln,i)=>{s+=T(x+w/2,y+27+i*21,ln,{size:15,w:i===0?800:600,fill:i===0?c:C.ink})});
+  return s+'</g>';
+}
+function strip(x,y,cw,cells){ // packet header
+  let s='';
+  cells.forEach((c,i)=>{
+    const fill=c.fill||(c.hl?'#fff3cc':'#fff');
+    s+=`<rect x="${x+i*cw}" y="${y}" width="${cw}" height="56" fill="${fill}" stroke="${c.hl?'#d9a300':'#2a7fb0'}" stroke-width="${c.hl?3:1.5}"/>`;
+    s+=T(x+i*cw+cw/2,y+21,c.k,{size:12,w:600,fill:c.kc||C.muted});
+    s+=T(x+i*cw+cw/2,y+43,c.v,{size:15,w:800,fill:c.vc||C.ink});
+  });
+  return s;
+}
+const hero=(big,sub,lines=[])=>`<div class="hero"><div class="big">${big}</div><div class="rule"></div><div class="sub">${sub}</div>${lines.map(l=>`<div class="lines">${l}</div>`).join('')}</div>`;
+
+/* ---------- reusable scenes ---------- */
+function journey(active){ // active: which highlight
+  const y=170, P={lap:[20,y-45],s1:[235,y],r1:[370,y],r2:[505,y],s2:[640,y]};
+  const on=k=>!active||active.includes(k)||!active.some(z=>z!=='path');
+  let s='';
+  s+=L(150,y,200,y)+L(270,y,336,y)+L(404,y,471,y)+L(539,y,605,y)+L(675,y,730,y);
+  if(active&&active.includes('path')) s+=dot(150,y,730,y,{dur:3,n:3});
+  s+=laptop(20,y-45,130,C.blue,['You','10.1.5.8'],{dim:!on('lap')});
+  s+=sw(235,y,64,{label:'Switch',dim:!on('s1'),hl:active&&active.includes('s1')});
+  s+=rt(370,y,32,{label:'Router 1',dim:!on('r1')});
+  s+=rt(505,y,32,{label:'Router 2',dim:!on('r2')});
+  s+=sw(640,y,64,{label:'Switch',dim:!on('s2')});
+  s+=server(730,y-62,100,124,C.green,['Instagram','3.218.3.143'],{dim:!on('ig')});
+  return s;
+}
+function arpScene(step){
+  const S={x:400,y:72}, L3=[{x:70,c:C.blue,n:'Blue',ip:'10.1.1.5',mac:'…BA:C6',p:1},{x:330,c:C.green,n:'Green',ip:'10.1.1.6',mac:'…A6:FD',p:2},{x:590,c:C.orange,n:'Orange',ip:'10.1.1.7',mac:'…55:29',p:3}];
+  let s='';
+  const top=l=>[l.x+80,232], from=[S.x,S.y+36];
+  L3.forEach(l=>{const t=top(l); s+=L(from[0],from[1],t[0],t[1]); s+=T(from[0]+(t[0]-from[0])*.22+(t[0]<from[0]?-14:t[0]>from[0]?14:12),from[1]+(t[1]-from[1])*.22,'Port '+l.p,{size:13,w:700,fill:C.muted})});
+  const D=(l,up,c)=>{const t=top(l);return up?dot(t[0],t[1],from[0],from[1],{c}):dot(from[0],from[1],t[0],t[1],{c})};
+  if(step===1) s+=D(L3[0],true);
+  if(step===3){s+=D(L3[1],false);s+=D(L3[2],false)}
+  if(step===5) s+=D(L3[1],true,C.green);
+  if(step===7) s+=D(L3[0],false,C.green);
+  if(step===8) {s+=D(L3[0],true,C.blue);s+=D(L3[1],false,C.blue)}
+  s+=sw(S.x,S.y,72,{hl:[2,6,7].includes(step)});
+  L3.forEach(l=>{
+    const dim = step===4 && l.n!=='Orange' ? false : false;
+    s+=laptop(l.x,232,160,l.c,[l.n,l.ip,'MAC '+l.mac],{fs:14,dim:(step===4&&l.n!=='Orange')});
+  });
+  // speech
+  if(step===1||step===3) s+=bubble(40,92,230,['ARP broadcast','"Who is 10.1.1.6?"'],{c:C.blue});
+  if(step===4) s+=bubble(580,120,200,['Orange','"Not me. Ignored."'],{c:C.orange});
+  if(step===5||step===7) s+=bubble(530,92,260,['Green replies','"10.1.1.6 is me: …A6:FD"'],{c:C.gink});
+  // MAC table
+  const rows=[]; if(step>=2) rows.push(['Port 1','…BA:C6 (Blue)',step===2]); if(step>=6) rows.push(['Port 2','…A6:FD (Green)',step===6]);
+  let tx=600,ty=8; s+=`<text x="${tx+125}" y="${ty+12}" font-size="13" font-weight="800" fill="${C.ink}" text-anchor="middle">Switch MAC table</text>`;
+  s+=`<rect x="${tx}" y="${ty+20}" width="250" height="26" fill="#111"/>`+T(tx+55,ty+38,'Port',{size:13,fill:'#fff'})+T(tx+175,ty+38,'MAC address',{size:13,fill:'#fff'});
+  for(let i=0;i<2;i++){const r=rows[i]; s+=`<rect x="${tx}" y="${ty+46+i*26}" width="250" height="26" fill="${r&&r[2]?'#fff3cc':'#fff'}" stroke="#222"/>`; if(r){s+=T(tx+55,ty+64+i*26,r[0],{size:13})+T(tx+175,ty+64+i*26,r[1],{size:13,w:600})} }
+  if(step===8) s+=bubble(40,92,240,['Blue\'s ARP memory','10.1.1.6 = …A6:FD'],{c:C.blue});
+  return svg(s,860,360,'Switch with three laptops, ARP step '+step);
+}
+function castScene(mode){ // unicast / broadcast / multicast
+  const cx=430, xs=[60,220,380,540,700]; let s='';
+  const tgt = mode==='uni'?[1]:mode==='multi'?[1,3,4]:[0,1,2,3,4];
+  xs.forEach((x,i)=>{s+=L(cx,96,x+60,224,{c:tgt.includes(i)?C.ink:C.line})});
+  s+=L(cx,96,cx,40,{c:C.ink}); s+=dot(cx,40,cx,96,{dur:1});
+  tgt.forEach(i=>{s+=dot(cx,96,xs[i]+60,224,{delay:.5,dur:1.4})});
+  s+=sw(cx,60,64);
+  s+=T(cx+18,30,'← message from Host 1',{size:14,a:'start',fill:C.muted});
+  xs.forEach((x,i)=>{s+=laptop(x,224,120,tgt.includes(i)?C.green:'#fff',['Host '+(i+2)],{fs:15,tc:tgt.includes(i)?'#fff':C.muted})});
+  return svg(s,860,330,mode+'cast diagram');
+}
+function vlanScene(bc){
+  let s='';
+  s+=`<rect x="20" y="40" width="390" height="250" rx="14" fill="${C.panel}" stroke="${C.line}" stroke-dasharray="7 6" stroke-width="2"/>`+T(40,30,'VLAN 10  ·  Sales  ·  10.1.10.0/24',{a:'start',size:15,fill:C.blue});
+  s+=`<rect x="450" y="40" width="390" height="250" rx="14" fill="${C.panel}" stroke="${C.line}" stroke-dasharray="7 6" stroke-width="2"/>`+T(470,30,'VLAN 20  ·  Finance  ·  10.1.20.0/24',{a:'start',size:15,fill:C.green});
+  for(let g=0;g<2;g++) for(let i=0;i<6;i++){
+    const x=50+g*430+(i%3)*120, y=85+Math.floor(i/3)*110, me=bc&&g===0&&i===0, hit=bc&&g===0&&i>0;
+    s+=laptop(x,y,90,me?C.blue:hit?C.green:'#fff',[me?'Sender':hit?'Gets it':g===1&&bc?'Quiet':''],{fs:13,tc:me||hit?'#fff':C.muted});
+  }
+  return svg(s,860,310,'Two VLANs');
+}
+function hop(n){
+  // n: 0 intro, 1 laptop->R1, 2 R1->R2 (NAT), 3 R2->Instagram, 4 reply
+  let s=journey(['lap','s1','r1','r2','s2','ig']);
+  const segs={1:[150,402-66],2:[402,537-64],3:[537,730],4:[730,150]};
+  if(n>=1&&n<=3) s+=dot(segs[n][0],170,segs[n][1],170,{dur:1.6,n:2});
+  if(n===4) s+=dot(730,170,150,170,{dur:3,n:3,c:C.green});
+  const H={
+    0:['?','?','3.218.3.143','10.1.5.8','443','53874'],
+    1:['Router 1','You','3.218.3.143','10.1.5.8','443','53874'],
+    2:['Router 2','Router 1','3.218.3.143','203.0.113.10','443','53874'],
+    3:['Instagram','Router 2','3.218.3.143','203.0.113.10','443','53874'],
+    4:['Router 2','Instagram','203.0.113.10','3.218.3.143','53874','443']};
+  const prev=H[n-1]||H[n], cur=H[n];
+  const ks=['Destination MAC','Source MAC','Destination IP','Source IP','Destination Port','Source Port'];
+  s+=strip(25,10,135,cur.map((v,i)=>({k:ks[i],v,hl:n>0&&n<4&&v!==prev[i]})));
+  s+=T(430,92,'↑ Header on the packet right now (yellow = changed at this hop)',{size:13,w:600,fill:C.muted});
+  return svg(s,860,300,'Packet journey hop '+n);
+}
+
+/* ---------- content ---------- */
+const MODS=[
+{t:'The journey', soft:'in 30 seconds', steps:[
+ {h:'You tap Instagram. A second later, your feed appears.', p:'In that second, your request crossed several boxes and came back. This course follows that trip, one step at a time.', sc:()=>svg(journey(['path']),860,300,'Laptop to Instagram path')},
+ {h:'Step 1: your laptop gets an address', p:'When you join a network, a service called <em>DHCP</em> hands your laptop an address, a bit like being given a room number when you check into a hotel.', sc:()=>svg(journey(['lap','s1'])+bubble(20,30,250,['Laptop','"Can I have an address?"'],{c:C.blue,tail:[85,124]}),860,300)},
+ {h:'Step 2: it looks up where Instagram lives', p:'Computers do not understand names like instagram.com. A service called <em>DNS</em> works like a phone book and turns the name into a number: 3.218.3.143.', sc:()=>svg(journey(['lap','ig'])+bubble(250,20,330,['DNS phone book','instagram.com = 3.218.3.143'],{c:C.green}),860,300)},
+ {h:'Step 3: the request hops from box to box', p:'<em>Switches</em> move it around the office. <em>Routers</em> move it between networks, across the internet, until it reaches Instagram.', sc:()=>svg(journey(['path','lap','s1','r1','r2','s2','ig']),860,300)},
+ {h:'Step 4: the answer comes back the same way', p:'Instagram replies, and the photos travel back hop by hop. By the end of this course, you will be able to explain every step of that trip.', aside:'Use the arrows below, or the ← → keys, to move through each module.', sc:()=>svg(journey(['lap','s1','r1','r2','s2','ig'])+dot(730,170,150,170,{dur:3,n:3,c:C.green}),860,300)},
+]},
+{t:'Your device\'s', soft:'identity', steps:[
+ {h:'Every device has a network card', p:'The <em>Network Interface Card (NIC)</em> is the part that sends and receives data. Most laptops have two: one for the cable (wired) and one for Wi-Fi (wireless).', sc:()=>svg(laptop(330,90,200,'#fff',['Your laptop'],{tc:C.ink})+`<circle cx="210" cy="150" r="40" fill="#fff" stroke="${C.ink}" stroke-width="2.5"/>`+T(210,157,'Cable',{size:15})+T(210,215,'Wired NIC',{size:14,fill:C.muted})+L(250,150,320,150)+`<circle cx="650" cy="150" r="40" fill="#fff" stroke="${C.ink}" stroke-width="2.5"/>`+T(650,157,'Wi-Fi',{size:15})+T(650,215,'Wireless NIC',{size:14,fill:C.muted})+L(540,150,610,150),860,300)},
+ {h:'Each card has a MAC address: its name tag', p:'The <em>MAC address</em> is burned into the card at the factory. It is 12 characters long (48 bits). The first half tells you who made the card; the second half is unique to that card.', sc:()=>hero('<span class="b">8C:85:90</span>:72:BA:C6','<span class="b">Manufacturer</span> + unique serial',['Used to deliver data to the next device on the same local network'])},
+ {h:'Each device also gets an IP address: its postal address', p:'The <em>IP address</em> says where the device sits in the network. Unlike the MAC, it changes when you move: home, office and café Wi-Fi will each give you a different one.', sc:()=>hero('10.1.5.25','The <span class="b">IP</span> Address',['Four numbers from 0 to 255, separated by dots'])},
+ {h:'A port number picks the right app', p:'Your laptop runs many apps at once. The <em>port number</em> says which app a piece of data is for: the browser, Outlook, Teams… The IP gets data to the device; the port gets it to the right app.', sc:()=>svg(laptop(60,80,180,C.blue,['Client','10.1.7.5'])+L(260,140,520,140,{arrow:true,c:C.muted})+T(390,125,'"Web page please, port 443"',{size:15,w:700})+server(560,40,240,200,C.green,['Server 10.1.7.2'])+T(680,110,'Web · port 443',{size:15,w:800,fill:'#fff'})+T(680,135,'Email · port 25',{size:15,w:600,fill:'#e6ffef'})+T(680,160,'SSH · port 22',{size:15,w:600,fill:'#e6ffef'}),860,300)},
+ {h:'Recap: three ways to identify the same device', p:'Think of a parcel delivered to an office building.', sc:()=>`<div class="cards"><div class="card"><div class="lbl">MAC address</div><div class="v b">The name tag</div><p>Burned into the card. Used for the next hand-off on the local network.</p></div><div class="card"><div class="lbl">IP address</div><div class="v g">The street address</div><p>Where the device is right now. Used to cross networks.</p></div><div class="card"><div class="lbl">Port number</div><div class="v">The department</div><p>Which app inside the device should get the data.</p></div></div>`},
+]},
+{t:'Wired', soft:'& wireless', steps:[
+ {h:'Wired: Ethernet', p:'The cable is called <em>Ethernet</em> (standard IEEE 802.3). Most laptops and desks today run at 1 Gb/s; links between switches run at 10 Gb/s and much faster.', sc:()=>svg((()=>{const v=[['10 Mb',.5],['100 Mb',1],['1 Gb',2],['2.5 Gb',2.6],['10 Gb',3.3],['25 Gb',3.8],['40 Gb',4.2],['100 Gb',4.8],['400 Gb',5.6]];let s=T(40,30,'Ethernet speeds (each step is a big jump)',{a:'start',size:15,fill:C.muted});v.forEach((d,i)=>{const h=d[1]*42;s+=`<rect x="${50+i*88}" y="${280-h}" width="56" height="${h}" rx="5" fill="${i===2?C.blue:'#cfe9f5'}"/>`+T(78+i*88,300,d[0],{size:14,w:i===2?800:600})});s+=T(78+2*88,280-2*42-10,'your laptop',{size:13,fill:C.bink});return s})(),860,320)},
+ {h:'Wireless: Wi-Fi', p:'Wi-Fi follows the IEEE 802.11 family of standards. The newest, <em>Wi-Fi 7</em> (802.11be), has a theoretical top speed of about 46 Gb/s. Real-world speeds are far lower, and they drop with distance and walls.', sc:()=>hero('Wi-Fi <span class="b">7</span>','IEEE <span class="b">802.11be</span>',['Theoretical max ≈ 46 Gb/s · real life: much less'])},
+ {h:'Fun fact: there used to be two kinds of cable', p:'"Straight-through" cables connected a computer to a switch, and "crossover" cables connected two switches together. Today, a feature called <em>Auto-MDIX</em> lets the device adapt automatically, so any cable works.', aside:'Colours (blue, red…) are just a convention, not a rule.', sc:()=>svg(laptop(70,90,170,C.blue,['Laptop'])+L(270,145,380,145,{c:C.blue,sw:6})+sw(430,145,80,{label:'Switch'})+L(480,145,600,145,{c:C.red,sw:6})+sw(650,145,80,{label:'Switch'})+T(325,128,'straight',{size:13,fill:C.muted})+T(540,128,'crossover',{size:13,fill:C.muted})+T(430,270,'Auto-MDIX: the port figures it out for you',{size:16,w:800}),860,300)},
+]},
+{t:'Bits', soft:'& bytes', steps:[
+ {h:'Everything is sent as 1s and 0s', p:'On the wire, data is a series of pulses: on means <em>1</em>, off means <em>0</em>. Each 1 or 0 is a <em>bit</em>. Eight bits make a <em>byte</em>, enough for one letter.', aside:'Try it: click the bits to flip them and complete the challenges below.', sc:()=>bitWidget(), after:bindBits},
+ {h:'Small b or big B makes a big difference', p:'<em>b</em> = bit, <em>B</em> = Byte (8 bits). Network speeds are quoted in bits per second; file sizes and storage in bytes.', sc:()=>`<div class="cards"><div class="card"><div class="lbl">Network speed · bits</div><div class="v b">100 Mb/s</div><p>Your internet plan</p></div><div class="card"><div class="lbl">÷ 8</div><div class="v">12.5 MB/s</div><p>What your download shows</p></div><div class="card"><div class="lbl">Storage · bytes</div><div class="v g">1 GB movie</div><p>≈ 80 seconds to download at 100 Mb/s</p></div></div>`},
+ {h:'Kilo, Mega, Giga, Tera', p:'Each step up is roughly 1,000 times bigger.', sc:()=>`<table class="t"><tr><th>Unit</th><th>Size</th><th>Everyday example</th></tr><tr><td>KB · Kilobyte</td><td>1,000 bytes</td><td>A short email</td></tr><tr><td>MB · Megabyte</td><td>1,000 KB</td><td>A phone photo (≈ 3 MB)</td></tr><tr><td>GB · Gigabyte</td><td>1,000 MB</td><td>An HD movie</td></tr><tr><td>TB · Terabyte</td><td>1,000 GB</td><td>A laptop drive</td></tr><tr><td>PB · Petabyte</td><td>1,000 TB</td><td>A data centre</td></tr></table>`},
+]},
+{t:'IP', soft:'addresses', steps:[
+ {h:'Four numbers, each from 0 to 255', p:'An IPv4 address is 32 bits long, written as four numbers separated by dots. Every device on a network needs a unique one.', sc:()=>hero('<span class="b">10</span>.<span class="b">56</span>.<span class="g">7</span>.<span class="g">183</span>','<span class="b">Network part</span> + <span class="g">host part</span>',['Like a street name + a house number'])},
+ {h:'The old "classes"', p:'Originally, the first number told you how big the network was. You will still hear "Class A, B, C" today, even though modern networks size things more flexibly (that is what the subnet mask is for, in module 8).', sc:()=>`<table class="t"><tr><th>Class</th><th>First number</th><th>Network size</th></tr><tr><td>A</td><td>1 – 126</td><td>Huge (16.7 million hosts)</td></tr><tr><td>B</td><td>128 – 191</td><td>Medium (65,534 hosts)</td></tr><tr><td>C</td><td>192 – 223</td><td>Small (254 hosts)</td></tr><tr><td>D</td><td>224 – 239</td><td>Multicast (groups)</td></tr><tr><td>E</td><td>240 – 255</td><td>Reserved / experimental</td></tr></table>`},
+ {h:'127.0.0.1 means "myself"', p:'Addresses starting with 127 are <em>loopback</em>: a device talking to itself. Useful for testing, never seen on the network.', sc:()=>hero('<span class="b">127</span>.0.0.1','The <span class="b">Loopback</span> address',['"There\'s no place like 127.0.0.1"'])},
+ {h:'Private addresses: for inside buildings', p:'Some ranges are reserved for <em>private</em> use, inside homes and companies. They are not reachable from the internet, so every organisation can reuse them.', sc:()=>`<div class="wid"><table class="t"><tr><th>Class</th><th>Private range</th><th>Short form</th></tr><tr><td>A</td><td>10.0.0.0 – 10.255.255.255</td><td>10.0.0.0/8</td></tr><tr><td>B</td><td>172.16.0.0 – 172.31.255.255</td><td>172.16.0.0/12</td></tr><tr><td>C</td><td>192.168.0.0 – 192.168.255.255</td><td>192.168.0.0/16</td></tr></table><div class="hint">Your home Wi-Fi almost certainly uses 192.168.x.x</div></div>`},
+ {h:'Public addresses: for the internet', p:'Everything outside those ranges is <em>public</em>: unique across the whole internet. Instagram\'s 3.218.3.143 is one. In Asia-Pacific they are handed out through ISPs, under APNIC.', sc:()=>hero('<span class="g">3</span>.218.3.143','<span class="g">PUBLIC</span> Address',['Globally unique · reachable from anywhere'])},
+ {h:'NAT: how private talks to public', p:'Your laptop\'s private address cannot travel on the internet. So the router at the edge swaps it for its own public address on the way out, and swaps it back on the way in. This is <em>Network Address Translation (NAT)</em>.', aside:'NAT lets thousands of devices share one public address. It is one big reason the world has not yet run out of IPv4 addresses.', sc:natScene},
+ {h:'IPv6: the long-term answer', p:'IPv4 has about 4.3 billion addresses, which is not enough for every phone, laptop and sensor on Earth. <em>IPv6</em> uses 128 bits instead of 32: enough for practically unlimited devices.', sc:()=>hero('<span style="font-size:.5em">2001:0fb3:25d8:0030:0012:4b2d:0770:9291</span>','<span class="b">IPv6</span> · 128 bits',['More to learn, and the way of the future'])},
+]},
+{t:'Layers', soft:'& the packet', steps:[
+ {h:'Networks are built in layers', p:'The <em>OSI model</em> (Open Systems Interconnection) splits networking into seven layers. Each one does a single job. For this course, only the bottom four matter.', sc:()=>osiScene(false)},
+ {h:'Each layer uses one of the "identities" you know', p:'Layer 1 is the cable or Wi-Fi. Layer 2 uses the MAC address. Layer 3 uses the IP address. Layer 4 uses the port number.', sc:()=>osiScene(true)},
+ {h:'TCP: the careful courier', p:'At layer 4 there are two main options. <em>TCP</em> sets up a conversation first, numbers every packet and resends anything that goes missing. Reliable, a little slower. Used for web pages, email and file downloads.', sc:()=>tcpScene(true)},
+ {h:'UDP: the fast talker', p:'<em>UDP</em> just sends, with no set-up and no resending. If a packet is lost, it moves on. Perfect for live audio and video, where a late packet is useless anyway.', sc:()=>tcpScene(false)},
+ {h:'A port always belongs to TCP or UDP', p:'The port number sits inside the TCP or UDP part of the packet. So TCP 53 and UDP 53 are two different doors. Something with no TCP or UDP, like <em>ping</em>, has no port at all.', sc:()=>`<table class="t"><tr><th>Application</th><th>Protocol</th><th>Port</th></tr><tr><td>Web browsing (HTTPS)</td><td class="tcp">TCP</td><td>443</td></tr><tr><td>Instagram / Facebook</td><td class="udp">TCP + UDP (QUIC)</td><td>443</td></tr><tr><td>Outlook / Microsoft 365</td><td class="tcp">TCP</td><td>443</td></tr><tr><td>Webex (audio &amp; video)</td><td class="udp">UDP</td><td>9000</td></tr><tr><td>Teams (audio &amp; video)</td><td class="udp">UDP</td><td>3478 – 3481</td></tr><tr><td>DNS</td><td class="udp">UDP</td><td>53</td></tr><tr><td>DHCP</td><td class="udp">UDP</td><td>67 / 68</td></tr><tr><td>SSH</td><td class="tcp">TCP</td><td>22</td></tr></table>`},
+ {h:'Almost everything is 443 now', p:'In the 90s, the port told you the app: 25 was email, 80 was the web. Today Instagram, Outlook and Netflix all use 443. That is why modern firewalls have to recognise the <em>application itself</em>, not just the port.', sc:()=>hero('<span class="b">443</span>','Almost everything is <span class="b">443</span>',['The port no longer tells you which app it is'])},
+ {h:'The packet: an envelope with labels', p:'Every piece of data travels with <em>headers</em> stuck on the front: where it is going and where it came from, at each layer. Then comes the actual data.', sc:()=>svg(strip(20,40,117,[{k:'Destination MAC',v:'…9F:17:58'},{k:'Source MAC',v:'…72:BA:C6'},{k:'Destination IP',v:'10.5.1.9'},{k:'Source IP',v:'10.5.1.8'},{k:'Dest. Port',v:'22'},{k:'Source Port',v:'2001'},{k:'',v:'Data',hl:false,fill:C.yellow}])+T(137,125,'Layer 2',{size:14,fill:C.blue})+T(371,125,'Layer 3',{size:14,fill:C.green})+T(605,125,'Layer 4',{size:14,fill:C.ink})+`<path d="M20,108 h234 M254,108 v-6 M20,108 v-6 M254,108 h234 v-6 M488,108 h234 v-6" stroke="${C.muted}" fill="none" stroke-width="2"/>`+laptop(60,170,160,C.blue,['Sender','10.5.1.8'])+L(240,220,600,220)+dot(240,220,600,220,{n:4,dur:2.4})+laptop(630,170,160,C.green,['Receiver','10.5.1.9']),860,320)},
+]},
+{t:'Switching', soft:'& ARP', steps:[
+ {h:'An office analogy', p:'The CTO wants a letter delivered to "the Security Architect". It goes hand to hand: Jodi gives it to Lisa, Lisa to James, James to Gina, Gina to Sam. Each hand-off is to a <em>person, by name</em>. The final target is a <em>job title</em>.', sc:()=>{const P=[['Jodi','CTO'],['Lisa','Exec Admin'],['James','SecOps Lead'],['Gina','Security Operator'],['Sam','Security Architect']];let s='';P.forEach((p,i)=>{const x=90+i*170;if(i<4){s+=L(x+44,150,x+126,150,{arrow:true,c:C.muted});s+=dot(x+44,150,x+126,150,{delay:i*.4,dur:1.6})}s+=`<circle cx="${x}" cy="150" r="42" fill="${i===0?C.blue:i===4?C.green:'#fff'}" stroke="${C.ink}" stroke-width="2.5"/>`+T(x,156,p[0],{size:16,w:800,fill:i===0||i===4?'#fff':C.ink})+T(x,220,p[1],{size:14,w:600,fill:C.muted})});s+=T(430,60,'Hand-off by name = MAC     ·     Final target by title = IP',{size:16,w:800});return svg(s,860,280)}},
+ {h:'Networks work the same way', p:'Each hop hands the data to the next device by <em>MAC address</em> (layer 2, hop by hop). The final destination is the <em>IP address</em> (layer 3, end to end).', sc:()=>{let s='';['A','B','C','D','E'].forEach((n,i)=>{const x=40+i*165;s+=laptop(x,120,120,i===0?C.blue:i===4?C.green:'#fff',['MAC '+n,'IP '+n],{fs:14,tc:i===0||i===4?'#fff':C.ink});if(i<4){s+=L(x+130,158,x+160,158,{c:C.ink});s+=`<path d="M${x+60},110 Q${x+142},50 ${x+225},110" fill="none" stroke="${C.blue}" stroke-width="2.5" marker-end="url(#ah)"/>`}});s+=T(430,40,'Layer 2: MAC to MAC, one hop at a time',{size:15,fill:C.blue});s+=`<path d="M100,250 H760" stroke="${C.green}" stroke-width="3" marker-end="url(#ah)"/>`+T(430,280,'Layer 3: IP A to IP E, across the whole network',{size:15,fill:C.gink});return svg(s,860,300)}},
+ {h:'Meet the switch', p:'Inside a building, devices connect to a <em>switch</em>. It learns which device (MAC) is on which of its ports, and sends data only where it needs to go. But first, Blue only knows Green\'s <em>IP</em>, not its MAC…', sc:()=>arpScene(0)},
+ {h:'ARP step 1: "Who is 10.1.1.6?"', p:'Blue sends an <em>ARP</em> (Address Resolution Protocol) message to everyone: "Whoever has 10.1.1.6, please tell me your MAC address."', sc:()=>arpScene(1)},
+ {h:'ARP step 2: the switch learns', p:'The message carries Blue\'s MAC as the sender. The switch notes: <em>Blue is on Port 1</em>.', sc:()=>arpScene(2)},
+ {h:'ARP step 3: sent to everyone', p:'ARP is a <em>broadcast</em>, so the switch copies it out of every other port.', sc:()=>arpScene(3)},
+ {h:'ARP step 4: Orange ignores it', p:'Orange is 10.1.1.7, not 10.1.1.6. Not its business, so it drops the message.', sc:()=>arpScene(4)},
+ {h:'ARP step 5: Green answers', p:'Green recognises its own IP and replies directly to Blue: "10.1.1.6 is me, here is my MAC."', sc:()=>arpScene(5)},
+ {h:'ARP step 6: the switch learns again', p:'The reply carries Green\'s MAC as the sender. The switch notes: <em>Green is on Port 2</em>.', sc:()=>arpScene(6)},
+ {h:'ARP step 7: delivered only to Blue', p:'The switch already knows Blue is on Port 1, so the reply goes only there. No need to bother anyone else.', sc:()=>arpScene(7)},
+ {h:'ARP step 8: now they can talk', p:'Blue remembers Green\'s MAC, and sends its data straight to Green. The switch forwards it only to Port 2.', sc:()=>arpScene(8)},
+]},
+{t:'Subnet', soft:'masks', steps:[
+ {h:'The mask draws the line', p:'A <em>subnet mask</em> says how much of the address is the network part, and how much is left for devices. "/24" means the first 24 bits (the first three numbers) are the network.', sc:()=>hero('<span class="b">10.1.5</span>.<span class="g">8</span> /24','<span class="b">Network: 10.1.5</span> · <span class="g">Device: 8</span>',['Same as writing the mask 255.255.255.0'])},
+ {h:'Same subnet or not? That decides the path', p:'If two devices are in the <em>same subnet</em>, the switch connects them directly (layer 2). If they are in <em>different subnets</em>, the data must go through a router, called the <em>default gateway</em> (layer 3).', sc:()=>svg(`<rect x="20" y="40" width="380" height="220" rx="14" fill="${C.panel}" stroke="${C.line}" stroke-dasharray="7 6" stroke-width="2"/>`+T(40,30,'Subnet 10.1.5.0/24',{a:'start',fill:C.blue})+laptop(50,110,120,C.blue,['10.1.5.8'],{fs:14})+laptop(250,110,120,C.blue,['10.1.5.20'],{fs:14})+`<path d="M110,100 Q210,40 310,100" fill="none" stroke="${C.blue}" stroke-width="3" marker-end="url(#ah)"/>`+T(210,240,'Direct: layer 2',{size:15,fill:C.blue})+`<rect x="560" y="40" width="280" height="220" rx="14" fill="${C.panel}" stroke="${C.line}" stroke-dasharray="7 6" stroke-width="2"/>`+T(580,30,'Subnet 10.1.9.0/24',{a:'start',fill:C.green})+laptop(640,110,120,C.green,['10.1.9.23'],{fs:14})+rt(480,160,32,{label:'Gateway'})+L(370,160,446,160,{c:C.ink})+L(514,160,630,160,{c:C.ink})+dot(370,160,630,160,{dur:2})+T(480,240,'Via router: layer 3',{size:15,fill:C.green}),860,290)},
+ {h:'Try it: decode any address', p:'Type an IP address and slide the mask. The calculator shows the subnet, the usable range and the broadcast address. Start with the deck\'s example: 10.1.47.5 /19.', aside:'Blue bits = network part, green bits = device part.', sc:()=>calcWidget(), after:bindCalc},
+]},
+{t:'Broadcasts', soft:'& VLANs', steps:[
+ {h:'Unicast: one to one', p:'Most traffic goes from one device to exactly one other device.', sc:()=>castScene('uni')},
+ {h:'Broadcast: one to everyone', p:'Some messages, like ARP, go to <em>every</em> device on the local network. The broadcast address is the last address of the subnet (e.g. 10.1.5.255 for 10.1.5.0/24).', sc:()=>castScene('broad')},
+ {h:'Multicast: one to a group', p:'Multicast reaches only devices that joined a group, like everyone watching the same live video stream. It uses addresses from 224 to 239.', sc:()=>castScene('multi')},
+ {h:'Big flat networks get noisy', p:'With thousands of devices in one network, every broadcast hits every device. So we split the network into smaller pieces.', sc:()=>vlanScene(false)},
+ {h:'VLANs keep broadcasts contained', p:'A <em>VLAN</em> (Virtual LAN) groups ports on a switch into a separate network. A broadcast in VLAN 10 stays in VLAN 10. In network designs, one VLAN = one subnet.', sc:()=>vlanScene(true)},
+]},
+{t:'Routers, DHCP, DNS', soft:'& the full trip', steps:[
+ {h:'Switch vs router', p:'A <em>switch</em> connects devices inside a building or campus (the LAN). A <em>router</em> connects different networks and locations (the WAN, the internet). Today many switches can also route.', sc:()=>svg(sw(230,120,90,{label:''})+T(230,200,'Switch',{size:18,w:800,fill:C.blue})+T(230,226,'Inside the building · LAN',{size:15,w:600,fill:C.muted})+rt(630,120,48)+T(630,200,'Router',{size:18,w:800,fill:C.green})+T(630,226,'Between networks · WAN',{size:15,w:600,fill:C.muted}),860,260)},
+ {h:'Routers keep a map', p:'Each router keeps a <em>routing table</em>: for every destination network, which way to send the data next. Routers share these maps with each other using routing protocols such as OSPF and BGP.', sc:()=>`<table class="t"><tr><th>Destination network</th><th>Send it out of</th><th>Next hop</th></tr><tr><td>10.1.5.0/24</td><td>Interface 1</td><td>Directly connected</td></tr><tr><td>10.1.9.0/24</td><td>Interface 2</td><td>Directly connected</td></tr><tr><td>172.16.0.0/16</td><td>Interface 3</td><td>Router 7</td></tr><tr><td>Anything else (0.0.0.0/0)</td><td>Interface 4</td><td>Internet provider</td></tr></table>`},
+ {h:'DHCP: getting set up', p:'When your laptop joins, it asks the <em>DHCP</em> server for its settings. It gets an IP address and mask, the default gateway (its router), and the DNS server to use.', sc:()=>svg(laptop(40,110,170,C.blue,['Laptop','…BA:C6'])+server(650,70,150,180,C.ink,['DHCP server'])+bubble(240,30,340,['Laptop',' "I\'m new here. Can I have an address?"'],{c:C.blue})+bubble(240,140,370,['DHCP server','IP 10.1.5.8 /24 · gateway 10.1.5.1','DNS server 8.8.8.8'],{c:C.green}),860,290)},
+ {h:'DNS: the phone book', p:'You type instagram.com. Your laptop asks the <em>DNS</em> server, which looks up the name and replies with the number: 3.218.3.143.', sc:()=>svg(laptop(40,110,170,C.blue,['Laptop','10.1.5.8'])+server(650,70,150,180,C.ink,['DNS server'])+bubble(240,40,350,['Laptop','"What is the IP of instagram.com?"'],{c:C.blue})+bubble(240,150,350,['DNS server','"instagram.com is 3.218.3.143"'],{c:C.green}),860,290)},
+ {h:'The full trip, hop by hop', p:'Now everything comes together. Watch the packet header at the top as the request travels to Instagram: the destination IP never changes, but other labels do.', sc:()=>hop(0)},
+ {h:'Hop 1: laptop to Router 1', p:'Instagram is in another network, so the laptop sends the packet to its gateway. The <em>MAC addresses</em> point to the next hop (Router 1); the <em>IP addresses</em> point to the final destination.', sc:()=>hop(1)},
+ {h:'Hop 2: Router 1 to Router 2', p:'Router 1 checks its routing table and picks Router 2 as the next hop. It rewrites the MAC addresses. Because it is the edge of the private network, it also does <em>NAT</em>: the source IP becomes the public 203.0.113.10.', sc:()=>hop(2)},
+ {h:'Hop 3: Router 2 to Instagram', p:'Router 2 rewrites the MAC addresses again and delivers the packet to Instagram. MACs change at every hop; the destination IP and ports stay the same all the way.', sc:()=>hop(3)},
+ {h:'And back again', p:'Instagram replies with source and destination swapped. Router 1 reverses the NAT, and the photos land on your screen. You can now explain every step of the trip.', sc:()=>hop(4)},
+ {h:'Try it yourself', p:'Open a terminal (Mac) or Command Prompt (Windows) and try these two commands. <em>ping</em> checks whether a device answers and how long it takes. <em>traceroute</em> (tracert on Windows) lists every router on the way.', sc:()=>`<div class="wid" style="max-width:720px"><code class="term">$ ping instagram.com
+64 bytes from 3.223.123.176: icmp_seq=0 ttl=238 time=90.2 ms
+64 bytes from 3.223.123.176: icmp_seq=1 ttl=238 time=89.7 ms</code><code class="term">$ traceroute instagram.com
+ 1  10.1.5.1      2.1 ms   ← your gateway
+ 2  …             8.4 ms   ← your provider
+ 3  …            15.7 ms
+ …</code></div>`},
+]},
+];
+
+/* ---------- special scenes ---------- */
+function natScene(){
+  let s='';
+  s+=T(160,22,'Inside (private)',{size:14,w:800})+strip(20,32,140,[{k:'Source IP',v:'10.1.5.8',fill:C.blue,kc:'#fff',vc:'#fff'},{k:'Destination IP',v:'3.218.3.143'}]);
+  s+=T(700,22,'Outside (public)',{size:14,w:800})+strip(560,32,140,[{k:'Source IP',v:'203.0.113.10',fill:C.yellow,kc:C.ink},{k:'Destination IP',v:'3.218.3.143'}]);
+  s+=L(240,175,385,175)+L(475,175,620,175)+dot(240,175,385,175,{n:2})+dot(475,175,620,175,{n:2,delay:.8});
+  s+=laptop(60,120,170,C.blue,['Laptop','10.1.5.8','(private)']);
+  s+=rt(430,175,40)+T(430,245,'Router (NAT)',{size:14,w:800})+T(430,265,'Public IP 203.0.113.10',{size:13,w:600,fill:C.muted});
+  s+=laptop(630,120,170,C.green,['Instagram','3.218.3.143','(public)']);
+  return svg(s,860,290,'NAT diagram');
+}
+function osiScene(map){
+  const names=['Application','Presentation','Session','Transport','Network','Data Link','Physical'];
+  const ids=['','','','Port number','IP address','MAC address','Cable / Wi-Fi'];
+  let s='';
+  names.forEach((n,i)=>{const y=20+i*38,on=i>=3;
+    s+=`<rect x="200" y="${y}" width="110" height="34" fill="#fff" stroke="${C.line}"/>`+T(255,y+23,'Layer '+(7-i),{size:14,w:600,fill:C.muted});
+    s+=`<rect x="320" y="${y}" width="170" height="34" fill="${on?C.blue:'#fff'}" stroke="${on?C.blue:C.line}"/>`+T(405,y+23,n,{size:15,w:on?800:600,fill:on?'#fff':C.muted});
+    if(map&&ids[i]){s+=L(495,y+17,545,y+17,{arrow:true,c:C.ink})+T(560,y+23,ids[i],{size:16,w:800,a:'start',fill:i===3?C.ink:i===4?C.green:i===5?C.blue:C.ink})}
+  });
+  if(!map) s+=T(600,190,'← the four we care about',{size:16,w:800,a:'start',fill:C.blue});
+  return svg(s,860,300,'OSI layers');
+}
+function tcpScene(tcp){
+  let s=laptop(30,90,150,C.blue,['Sender'])+laptop(680,90,150,C.green,['Receiver']);
+  const y=140;
+  s+=L(200,y,660,y,{c:C.line});
+  const pk=[1,2,3,4];
+  pk.forEach((n,i)=>{const x=240+i*95,lost=n===2;
+    s+=`<g><rect x="${x}" y="${y-20}" width="62" height="40" rx="6" fill="${lost?'#fff':C.yellow}" stroke="${lost?C.red:'#b38600'}" stroke-width="2" ${lost?'stroke-dasharray="5 4"':''}/>`+T(x+31,y+6,'#'+n,{size:16,w:800,fill:lost?C.red:C.ink})+'</g>';
+    if(lost) s+=T(x+31,y+48,'lost',{size:14,fill:C.red});
+  });
+  if(tcp){s+=`<path d="M650,${y+70} H260" stroke="${C.ink}" stroke-width="2.5" marker-end="url(#ah)" fill="none"/>`+T(455,y+95,'"I didn\'t get #2, please resend"',{size:15,w:800});
+    s+=`<rect x="414" y="${y+115}" width="62" height="40" rx="6" fill="${C.yellow}" stroke="#b38600" stroke-width="2"/>`+T(445,y+141,'#2',{size:16,w:800})+T(540,y+141,'resent',{size:14,fill:C.green,a:'start'});
+    s+=T(430,40,'TCP · reliable, ordered, a bit slower',{size:18,w:800,fill:C.green});}
+  else {s+=T(430,y+95,'No resend. The stream just keeps going.',{size:15,w:800});s+=T(430,40,'UDP · fast, no guarantees',{size:18,w:800,fill:C.blue});s+=dot(200,y,660,y,{n:5,dur:2.2})}
+  return svg(s,860,320,tcp?'TCP diagram':'UDP diagram');
+}
+function bitWidget(){
+  const v=[128,64,32,16,8,4,2,1];
+  return `<div class="wid"><div class="bits">${v.map((n,i)=>`<div class="bitc"><button class="bit" type="button" aria-pressed="false" data-v="${n}" id="bit${i}" aria-label="Bit worth ${n}">0</button>${n}</div>`).join('')}</div>
+  <div class="readout"><div>Binary<b id="bbin">00000000</b></div><div>Number<b id="bdec">0</b></div><div>Letter<b id="bchr">–</b></div></div><div class="chal" id="chal" aria-live="polite"></div></div>`;
+}
+const CH=[[65,'the letter A','That is how a capital A travels on the wire.'],[10,'the first number of 10.x.x.x','Private addresses start with this.'],[192,'a common mask value','Two bits on: 128 + 64.'],[255,'all bits on','The biggest number a byte can hold.']]; let CHI=0;
+function bindBits(){
+  const btns=[...document.querySelectorAll('.bit')];
+  const upd=()=>{let d=0,b='';btns.forEach(x=>{const on=x.getAttribute('aria-pressed')==='true';x.textContent=on?'1':'0';b+=on?'1':'0';if(on)d+=+x.dataset.v});
+    document.getElementById('bbin').textContent=b;document.getElementById('bdec').textContent=d;
+    document.getElementById('bchr').textContent=d>=33&&d<=126?String.fromCharCode(d):(d===32?'space':'–');
+    const c=CH[CHI%CH.length], ch=document.getElementById('chal');
+    ch.innerHTML = d===c[0] ? `<b class="g">✓ ${c[0]} = ${b}.</b> ${c[2]}<button type="button" class="btn" id="chn">Next challenge</button>` : `Challenge: make <b>${c[0]}</b> (${c[1]})`;
+    const n=document.getElementById('chn'); if(n) n.addEventListener('click',()=>{CHI++;btns.forEach(z=>z.setAttribute('aria-pressed','false'));upd()});};
+  btns.forEach(x=>x.addEventListener('click',()=>{x.setAttribute('aria-pressed',x.getAttribute('aria-pressed')==='true'?'false':'true');upd()}));
+  upd();
+}
+function calcWidget(){
+  return `<div class="calc"><div class="row"><label for="cip">IP address<input type="text" id="cip" value="10.1.47.5" inputmode="decimal" autocomplete="off"></label>
+  <label for="cpre">Mask: <span id="cpl">/19</span><input type="range" id="cpre" min="8" max="30" value="19"></label></div>
+  <div class="err" id="cerr" aria-live="polite"></div>
+  <div class="bin" id="cbin"></div>
+  <div class="res" id="cres"></div></div>`;
+}
+function bindCalc(){
+  const ip=document.getElementById('cip'), pre=document.getElementById('cpre');
+  const toS=n=>[24,16,8,0].map(s=>(n>>>s)&255).join('.');
+  const run=()=>{
+    const p=+pre.value; document.getElementById('cpl').textContent='/'+p;
+    const parts=ip.value.trim().split('.');
+    const ok=parts.length===4&&parts.every(x=>/^\d{1,3}$/.test(x)&&+x<=255);
+    const err=document.getElementById('cerr');
+    if(!ok){err.textContent='Enter four numbers from 0 to 255, separated by dots (e.g. 10.1.47.5).';return}
+    err.textContent='';
+    const n=parts.reduce((a,x)=>((a<<8)>>>0)+ +x,0)>>>0;
+    const mask=p===0?0:(0xFFFFFFFF<<(32-p))>>>0, net=(n&mask)>>>0, bc=(net|(~mask>>>0))>>>0;
+    const bits=n.toString(2).padStart(32,'0');
+    let html='';for(let i=0;i<32;i++){if(i&&i%8===0)html+=' . ';html+=`<span class="${i<p?'n':'h'}">${bits[i]}</span>`}
+    document.getElementById('cbin').innerHTML=html;
+    const R=[['Subnet',toS(net)+'/'+p],['Mask',toS(mask)],['First device',toS(net+1)],['Last device',toS(bc-1)],['Broadcast',toS(bc)],['Usable devices',(Math.pow(2,32-p)-2).toLocaleString()]];
+    document.getElementById('cres').innerHTML=R.map(r=>`<div>${r[0]}<b>${r[1]}</b></div>`).join('');
+  };
+  ip.addEventListener('input',run); pre.addEventListener('input',run); run();
+}
+
+/* ---------- quizzes & exercises ---------- */
+const QZ = {
+0:[
+ {q:'What turns "instagram.com" into an IP address?', o:['DNS','DHCP','A switch','The Wi-Fi'], a:0, e:'DNS is the phone book of the internet: name in, number out.'},
+ {q:'When you join a network, what gives your laptop its address?', o:['DNS','DHCP','Instagram','The cable'], a:1, e:'DHCP hands out addresses, like a hotel giving you a room number at check-in.'},
+ {q:'Which box moves data between different networks, across the internet?', o:['A switch','A router','A network card','A DNS server'], a:1, e:'Switches work inside a building; routers connect networks together.'},
+],
+1:[
+ {q:'Which address is burned into the network card at the factory?', o:['The MAC address','The IP address','The port number'], a:0, e:'The MAC is the card\'s permanent name tag.'},
+ {q:'You take your laptop from the office to a café. What changes?', o:['The MAC address','The IP address','Both','Neither'], a:1, e:'The IP depends on where you are; the MAC stays with the card.'},
+ {q:'What does a port number identify?', o:['The device','The building','The app on the device','The cable'], a:2, e:'The IP gets data to the device; the port gets it to the right app.'},
+ {q:'In the MAC address 8C:85:90:72:BA:C6, what does "8C:85:90" tell you?', o:['Who made the card','Where the device is','Its IP address','Its speed'], a:0, e:'The first half of a MAC is the manufacturer\'s code.'},
+],
+2:[
+ {q:'"Ethernet" is the name for…', o:['Wi-Fi','Wired network connections','The internet','A type of router'], a:1, e:'Ethernet is wired networking (IEEE 802.3).'},
+ {q:'Wi-Fi 7 is quoted at up to 46 Gb/s. What will you actually get?', o:['Exactly 46 Gb/s','Much less, depending on distance and walls','More, with a good laptop'], a:1, e:'46 Gb/s is a theoretical lab maximum.'},
+ {q:'You connect two switches with an ordinary cable. What happens today?', o:['It won\'t work, you need a crossover cable','Auto-MDIX adapts and it works','The switches break'], a:1, e:'Auto-MDIX lets ports adapt automatically, so any cable works.'},
+],
+3:[
+ {q:'How many bits are in a byte?', o:['2','8','10','1,000'], a:1, e:'1 byte = 8 bits, enough for one letter.'},
+ {q:'Your internet plan is 100 Mb/s. Roughly how fast will a download show?', o:['100 MB/s','12.5 MB/s','800 MB/s','1 MB/s'], a:1, e:'Small b = bits. Divide by 8 to get bytes: 100 ÷ 8 = 12.5 MB/s.'},
+ {q:'Which is bigger?', o:['1 GB','1 Gb','They are the same'], a:0, e:'Big B = Byte = 8 bits, so 1 GB is 8 times bigger than 1 Gb.'},
+],
+4:[
+ {q:'Which of these addresses is private?', o:['8.8.8.8','192.168.1.10','3.218.3.143','172.40.1.1'], a:1, e:'192.168.x.x is a private range. 172.40 is outside the private 172.16–172.31 range.'},
+ {q:'What does NAT do?', o:['Gives devices a MAC address','Swaps a private source IP for a public one at the edge','Turns names into IP addresses','Encrypts traffic'], a:1, e:'NAT lets many private devices share one public address.'},
+ {q:'What is 127.0.0.1?', o:['Google\'s DNS','Your router','Loopback: the device talking to itself','A broadcast address'], a:2, e:'127.x.x.x is loopback, used for testing on the device itself.'},
+ {q:'Why does IPv6 exist?', o:['IPv4 is too slow','There are not enough IPv4 addresses for every device','IPv4 does not work on Wi-Fi'], a:1, e:'IPv4 has about 4.3 billion addresses; IPv6 has practically unlimited ones.'},
+],
+5:[
+ {q:'Which layer uses IP addresses?', o:['Layer 1 · Physical','Layer 2 · Data Link','Layer 3 · Network','Layer 4 · Transport'], a:2, e:'Layer 2 = MAC, layer 3 = IP, layer 4 = port.'},
+ {q:'A live video call is best suited to…', o:['TCP, because nothing must be lost','UDP, because a late packet is useless anyway'], a:1, e:'Real-time audio and video use UDP: speed beats perfection.'},
+ {q:'Which of these has no port number?', o:['HTTPS','DNS','Ping','SSH'], a:2, e:'Ping uses ICMP, which runs without TCP or UDP, so there is no port.'},
+ {q:'Why can\'t a firewall rely on port numbers alone any more?', o:['Ports are encrypted','Almost every app now uses 443','Ports change every minute'], a:1, e:'Instagram, Outlook and Netflix all share 443, so firewalls must recognise the app itself.'},
+],
+6:[
+ {q:'How does a switch learn which device is on which port?', o:['It reads the source MAC of incoming frames','It reads the destination IP','Someone types it in','It asks DNS'], a:0, e:'Every frame carries its sender\'s MAC; the switch notes the port it came in on.'},
+ {q:'What is ARP used for?', o:['Finding the MAC for a known IP','Finding the IP for a name','Giving out IP addresses'], a:0, e:'"Who is 10.1.1.6? Tell me your MAC."'},
+ {q:'Who receives the ARP request?', o:['Only the target device','Every device on the local network','Only the router'], a:1, e:'ARP requests are broadcasts. Only the owner of the IP replies.'},
+ {q:'In the office analogy, handing the letter to "Lisa" by name is like…', o:['The IP address','The MAC address','The port number'], a:1, e:'Hop-by-hop hand-offs use MAC addresses; the final target (a job title) is the IP.'},
+],
+7:[
+ {q:'What does /24 mean?', o:['24 devices','The first 24 bits are the network part','24 subnets','Port 24'], a:1, e:'/24 = 255.255.255.0: the first three numbers are the network.'},
+ {q:'10.1.5.8/24 sends to 10.1.5.99. How does the data get there?', o:['Directly through the switch (layer 2)','Through the router (layer 3)'], a:0, e:'Same subnet (10.1.5), so the switch delivers it directly.'},
+ {q:'Where does a device send data for a different subnet?', o:['To the DNS server','To its default gateway (router)','To everyone'], a:1, e:'Different subnet means it must be routed.'},
+ {q:'How many devices fit in a /24?', o:['24','254','256','1,024'], a:1, e:'256 addresses minus the subnet address and the broadcast address = 254.'},
+],
+8:[
+ {q:'What is the broadcast address of 10.1.5.0/24?', o:['10.1.5.0','10.1.5.1','10.1.5.255','255.255.255.0'], a:2, e:'The broadcast is the last address of the subnet.'},
+ {q:'A live stream sent only to devices that joined a group is…', o:['Unicast','Broadcast','Multicast'], a:2, e:'Multicast = one to many, but not all.'},
+ {q:'What does a VLAN do?', o:['Speeds up Wi-Fi','Keeps broadcasts inside a group of devices','Gives out IP addresses'], a:1, e:'A VLAN is its own broadcast domain.'},
+ {q:'In a network design, one VLAN usually equals…', o:['One switch','One subnet','One building'], a:1, e:'VLAN = subnet.'},
+],
+9:[
+ {q:'On the way to Instagram, which label stays the same at every hop?', o:['Destination MAC','Source MAC','Destination IP'], a:2, e:'The destination IP is the final target and never changes.'},
+ {q:'What changes at every hop?', o:['The MAC addresses','The destination IP','The data'], a:0, e:'Each router rewrites the MACs for the next hand-off.'},
+ {q:'What does DHCP give your laptop?', o:['Only an IP address','IP + mask, default gateway and DNS server','The Wi-Fi password'], a:1, e:'Everything it needs to start talking.'},
+ {q:'What does traceroute show?', o:['Your Wi-Fi password','Every router on the way to a destination','Which apps are open'], a:1, e:'Each line is one router hop.'},
+]};
+
+const QS = {}; // answers chosen, per module
+function quizStep(mi){
+  return {h:'Quiz time', p:'Check what stuck. Pick an answer to see why it is right or wrong.', quiz:true, sc:()=>{
+    const st=QS[mi]||(QS[mi]={});
+    const qs=QZ[mi], done=Object.keys(st).length, score=qs.filter((q,i)=>st[i]===q.a).length;
+    return `<div class="quiz"><div class="score" id="qscore">${done===qs.length?`Score: ${score} / ${qs.length}${score===qs.length?' · perfect!':''}`:`${done} of ${qs.length} answered`}</div>`+
+    qs.map((q,i)=>`<div class="q"><div class="qq">${i+1}. ${q.q}</div><div class="opts">${q.o.map((o,j)=>{
+      const ans=st[i]!==undefined, cls=ans?(j===q.a?'ok':(j===st[i]?'no':'')):'';
+      return `<button type="button" class="opt ${cls}" data-q="${i}" data-o="${j}" ${ans?'disabled':''}>${o}</button>`}).join('')}</div>
+      <div class="fb">${st[i]!==undefined?(st[i]===q.a?'<b class="g">Correct.</b> ':'<b class="red">Not quite.</b> ')+q.e:''}</div></div>`).join('')+
+    (done===qs.length?`<button type="button" class="btn" id="qreset">Try again</button>`:'')+`</div>`;
+  }, after:()=>{
+    document.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{QS[mi][+b.dataset.q]=+b.dataset.o;rerender()}));
+    const r=document.getElementById('qreset'); if(r) r.addEventListener('click',()=>{QS[mi]={};rerender()});
+  }};
+}
+
+/* sorter exercise: items into buckets, instant feedback */
+const SS={};
+function sorterStep(id,h,p,cats,items){
+  return {h, p, quiz:true, sc:()=>{
+    const st=SS[id]||(SS[id]={});
+    const done=Object.keys(st).length, right=items.filter((it,i)=>st[i]===it.c).length;
+    return `<div class="quiz"><div class="score">${done===items.length?`You got ${right} / ${items.length}`:`${done} of ${items.length} sorted`}</div>`+
+    items.map((it,i)=>{const ans=st[i]!==undefined;return `<div class="q sort"><div class="qq">${it.t}</div><div class="opts">${cats.map((c,j)=>`<button type="button" class="opt ${ans?(j===it.c?'ok':(j===st[i]?'no':'')):''}" data-i="${i}" data-c="${j}" ${ans?'disabled':''}>${c}</button>`).join('')}</div>${ans?`<div class="fb">${st[i]===it.c?'<b class="g">Yes.</b> ':'<b class="red">No.</b> '}${it.e}</div>`:''}</div>`}).join('')+
+    (done===items.length?`<button type="button" class="btn" id="sreset">Try again</button>`:'')+`</div>`;
+  }, after:()=>{
+    document.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{SS[id][+b.dataset.i]=+b.dataset.c;rerender()}));
+    const r=document.getElementById('sreset'); if(r) r.addEventListener('click',()=>{SS[id]={};rerender()});
+  }};
+}
+
+/* be the switch */
+const BTS={i:0,ans:null};
+const FRAMES=[
+ {inP:1,from:'A',to:'C',ok:3,why:'The table is empty, so the switch does not know where C is: it floods the frame out of every other port. It also learns: A is on Port 1.'},
+ {inP:3,from:'C',to:'A',ok:0,why:'A is already in the table (Port 1), so the frame goes only there. The switch learns: C is on Port 3.'},
+ {inP:2,from:'B',to:'Everyone (broadcast)',ok:3,why:'Broadcasts always go out of every other port. The switch learns: B is on Port 2.'},
+ {inP:1,from:'A',to:'C',ok:2,why:'C is known on Port 3, so only Port 3 gets it. No flooding this time.'},
+ {inP:3,from:'C',to:'B',ok:1,why:'B is known on Port 2. The switch has now learned everyone.'}];
+const tableAfter=i=>{const t={};FRAMES.slice(0,i).forEach(f=>{t[f.from]=f.inP});return t};
+function switchStep(){
+  return {h:'Exercise: be the switch', p:'Frames arrive one by one. Using only your MAC table, decide where each frame goes. Remember: the switch learns from the <em>source</em> MAC.', quiz:true, sc:()=>{
+    if(BTS.i>=FRAMES.length) return `<div class="quiz"><div class="score">Done! You forwarded ${BTS.score||0} / ${FRAMES.length} frames correctly.</div><div class="q"><div class="qq">Final MAC table</div>${macTable(tableAfter(FRAMES.length),null)}</div><button type="button" class="btn" id="bsreset">Play again</button></div>`;
+    const f=FRAMES[BTS.i], answered=BTS.ans!==null, tb=tableAfter(BTS.i+(answered?1:0));
+    const opts=['Port 1','Port 2','Port 3','All other ports (flood)'];
+    return `<div class="quiz"><div class="score">Frame ${BTS.i+1} of ${FRAMES.length}</div>
+    <div class="q">
+    <div class="frame">Frame arrives on <b>Port ${f.inP}</b>: from <b class="b">${f.from}</b> to <b class="g">${f.to}</b></div>
+    <div class="qq">Your MAC table ${answered?'(updated)':'right now'}</div>${macTable(tb,answered?f.from:null)}
+    <div class="qq" style="margin-top:12px">Where do you send it?</div>
+    <div class="opts">${opts.map((o,j)=>`<button type="button" class="opt ${answered?(j===f.ok?'ok':(j===BTS.ans?'no':'')):''}" data-j="${j}" ${answered||j+1===f.inP?'disabled':''}>${o}</button>`).join('')}</div>
+    ${answered?`<div class="fb">${BTS.ans===f.ok?'<b class="g">Correct.</b> ':'<b class="red">Not quite.</b> '}${f.why}</div><button type="button" class="btn primary" id="bsnext">Next frame</button>`:''}</div></div>`;
+  }, after:()=>{
+    document.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{BTS.ans=+b.dataset.j;if(BTS.ans===FRAMES[BTS.i].ok)BTS.score=(BTS.score||0)+1;rerender()}));
+    const n=document.getElementById('bsnext'); if(n) n.addEventListener('click',()=>{BTS.i++;BTS.ans=null;rerender()});
+    const r=document.getElementById('bsreset'); if(r) r.addEventListener('click',()=>{BTS.i=0;BTS.ans=null;BTS.score=0;rerender()});
+  }};
+}
+function macTable(t,hl){
+  const rows=Object.entries(t);
+  return `<table class="t mt"><tr><th>Port</th><th>MAC</th></tr>${rows.length?rows.map(([m,p])=>`<tr class="${m===hl?'new':''}"><td>Port ${p}</td><td>${m}</td></tr>`).join(''):'<tr><td colspan="2" style="font-weight:600;color:#6a7178">empty</td></tr>'}</table>`;
+}
+
+/* build the header */
+const BH={hop:1,v:{},checked:false};
+const HOPS={1:{dm:'Router 1',sm:'You',di:'3.218.3.143',si:'10.1.5.8',why:'Hop 1 goes from your laptop to its gateway, Router 1. Your private IP is still the source.'},
+ 2:{dm:'Router 2',sm:'Router 1',di:'3.218.3.143',si:'203.0.113.10',why:'Router 1 rewrites the MACs for the next hand-off and does NAT: the source IP becomes its public address.'},
+ 3:{dm:'Instagram',sm:'Router 2',di:'3.218.3.143',si:'203.0.113.10',why:'New MACs again; the IPs stay the same as hop 2.'}};
+function headerStep(){
+  const F=[['dm','Destination MAC',['You','Router 1','Router 2','Instagram']],['sm','Source MAC',['You','Router 1','Router 2','Instagram']],['di','Destination IP',['10.1.5.8','203.0.113.10','3.218.3.143']],['si','Source IP',['10.1.5.8','203.0.113.10','3.218.3.143']]];
+  return {h:'Exercise: build the header', p:'Fill in the labels the packet carries on each hop to Instagram. Tip: MACs point to the <em>next hop</em>, IPs point to the <em>final destination</em>. Router 1 does NAT.', quiz:true, sc:()=>{
+    const ans=HOPS[BH.hop]; let ok=0;
+    const cells=F.map(([k,lab,opts])=>{const v=BH.v[k]||'', good=v===ans[k]; if(good)ok++;
+      return `<label class="hf ${BH.checked?(good?'okf':'nof'):''}" for="h-${k}">${lab}<select id="h-${k}" data-k="${k}"><option value="">Choose…</option>${opts.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select></label>`}).join('');
+    return `<div class="quiz"><div class="opts">${[1,2,3].map(h=>`<button type="button" class="opt hopb ${BH.hop===h?'cur':''}" data-h="${h}">Hop ${h}</button>`).join('')}</div>
+    <div class="q"><div class="qq">${['','You → Router 1','Router 1 → Router 2','Router 2 → Instagram'][BH.hop]}</div>
+    <div class="hdr">${cells}<div class="hf fixed">Destination Port<b>443</b></div><div class="hf fixed">Source Port<b>53874</b></div></div>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap"><button type="button" class="btn primary" id="hcheck">Check</button>${BH.checked&&ok<4?'<button type="button" class="btn" id="hshow">Show answer</button>':''}</div>
+    ${BH.checked?`<div class="fb">${ok===4?'<b class="g">All four correct.</b> ':`<b class="red">${ok} of 4 correct.</b> `}${ok===4?ans.why:'Red fields need another look.'}</div>`:''}</div></div>`;
+  }, after:()=>{
+    document.querySelectorAll('.hdr select').forEach(s=>s.addEventListener('change',()=>{BH.v[s.dataset.k]=s.value;BH.checked=false;rerender(false)}));
+    document.querySelectorAll('.hopb').forEach(b=>b.addEventListener('click',()=>{BH.hop=+b.dataset.h;BH.v={};BH.checked=false;rerender()}));
+    document.getElementById('hcheck').addEventListener('click',()=>{BH.checked=true;rerender()});
+    const s=document.getElementById('hshow'); if(s) s.addEventListener('click',()=>{const a=HOPS[BH.hop];BH.v={dm:a.dm,sm:a.sm,di:a.di,si:a.si};BH.checked=true;rerender()});
+  }};
+}
+
+/* insert exercises, then a quiz at the end of every module */
+MODS[4].steps.splice(5,0,sorterStep('pp','Exercise: private or public?','Sort each address. Watch out for the 172 range: only 172.16 to 172.31 is private.',['Private','Public'],[
+ {t:'192.168.1.20',c:0,e:'192.168.x.x is private (home routers love it).'},
+ {t:'8.8.8.8',c:1,e:'Public: it is Google\'s DNS server.'},
+ {t:'10.20.30.40',c:0,e:'Anything starting with 10 is private.'},
+ {t:'172.20.5.1',c:0,e:'172.20 is inside 172.16 – 172.31, so private.'},
+ {t:'172.40.5.1',c:1,e:'172.40 is outside 172.16 – 172.31, so public.'},
+ {t:'3.218.3.143',c:1,e:'Public: that is Instagram.'}]));
+MODS[5].steps.splice(5,0,sorterStep('tu','Exercise: TCP or UDP?','For each activity, would you pick the careful courier (TCP) or the fast talker (UDP)?',['TCP','UDP'],[
+ {t:'Downloading a file',c:0,e:'Every byte matters, so TCP.'},
+ {t:'The audio in a Webex call',c:1,e:'Real time: a late packet is useless, so UDP.'},
+ {t:'Sending an email',c:0,e:'It must arrive complete, so TCP.'},
+ {t:'A DNS lookup',c:1,e:'One tiny question and answer: UDP (port 53) is quicker.'},
+ {t:'Player movements in an online game',c:1,e:'Old positions are useless, so UDP.'},
+ {t:'Loading a web page over HTTPS',c:0,e:'Classic TCP 443 (HTTP/3 can use UDP, but TCP is the standard answer).'}]));
+MODS[6].steps.push(switchStep());
+MODS[7].steps.push(sorterStep('l23','Exercise: switch or router?','Does the data stay in the same subnet (the switch delivers it, layer 2) or does it need the router (layer 3)?',['Switch (same subnet)','Router (different subnet)'],[
+ {t:'10.1.5.8 /24 → 10.1.5.200',c:0,e:'Both in 10.1.5.0/24.'},
+ {t:'10.1.5.8 /24 → 10.1.6.8',c:1,e:'10.1.5 vs 10.1.6: different subnets.'},
+ {t:'192.168.1.10 /24 → 192.168.1.254',c:0,e:'Both in 192.168.1.0/24.'},
+ {t:'10.1.5.8 /16 → 10.1.9.4',c:0,e:'With /16 only the first two numbers count: both are 10.1.'},
+ {t:'10.1.5.8 /24 → 3.218.3.143 (Instagram)',c:1,e:'Anything on the internet goes through the gateway.'},
+ {t:'10.1.47.5 /19 → 10.1.70.1',c:1,e:'10.1.47.5/19 covers 10.1.32.0 to 10.1.63.255 (try it in the calculator).'}]));
+MODS[9].steps.splice(9,0,headerStep());
+MODS.forEach((md,i)=>md.steps.push(quizStep(i)));
+
+function rerender(){const y=window.scrollY;render();window.scrollTo(0,y)}
+/* ---------- engine ---------- */
+let m=0,s=0; const seen=new Set();
+const el=id=>document.getElementById(id);
+function navList(){
+  el('mods').innerHTML=MODS.map((md,i)=>`<li><button type="button" data-m="${i}" aria-current="${i===m}" class="${modDone(i)&&i!==m?'done':''}"><span class="n">${i+1}</span><span class="lab">${md.t} ${md.soft}</span></button></li>`).join('');
+  el('mods').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>go(+b.dataset.m,0)));
+}
+const modDone=i=>MODS[i].steps.every((_,j)=>seen.has(i+'-'+j));
+function render(){
+  const md=MODS[m], st=md.steps[s];
+  seen.add(m+'-'+s);
+  el('title').innerHTML=`${md.t} <span class="soft">${md.soft}</span>`;
+  el('count').textContent=`Module ${m+1} of ${MODS.length} · Step ${s+1} of ${md.steps.length}`;
+  el('stage').innerHTML=st.sc();
+  el('cap').innerHTML=`<h2>${st.h}</h2><p>${st.p}</p>${st.aside?`<p class="aside">${st.aside}</p>`:''}`;
+  if(st.after) st.after();
+  el('prev').disabled = m===0&&s===0;
+  const last = m===MODS.length-1&&s===md.steps.length-1;
+  el('next').disabled = last;
+  el('next').textContent = s===md.steps.length-1&&!last ? 'Next module' : 'Next';
+  el('dots').innerHTML=md.steps.map((_,j)=>`<i class="${j===s?'on':seen.has(m+'-'+j)?'seen':''}"></i>`).join('');
+  navList();
+  const h='m'+(m+1)+'-s'+(s+1); if(location.hash!=='#'+h){try{history.replaceState(null,'','#'+h)}catch(e){}}
+}
+function go(mi,si){m=mi;s=si;render();}
+function next(){const md=MODS[m]; if(s<md.steps.length-1) s++; else if(m<MODS.length-1){m++;s=0} render();}
+function prev(){ if(s>0) s--; else if(m>0){m--;s=MODS[m].steps.length-1} render();}
+el('next').addEventListener('click',next); el('prev').addEventListener('click',prev);
+document.addEventListener('keydown',e=>{ if(e.target.matches('input'))return; if(e.key==='ArrowRight'){next()} if(e.key==='ArrowLeft'){prev()} });
+function fromHash(){const r=/^#m(\d+)-s(\d+)$/.exec(location.hash||'');if(r){const a=+r[1]-1,b=+r[2]-1;if(MODS[a]&&MODS[a].steps[b]){m=a;s=b}}}
+window.addEventListener('hashchange',()=>{fromHash();render()});
+fromHash(); render();
+</script>
+</body>
+</html>
